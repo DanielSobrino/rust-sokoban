@@ -27,10 +27,15 @@ impl<'a> System<'a> for GameplayStateSystem {
             .map(|t| ((t.0.x, t.0.y), t.1))
             .collect::<HashMap<_, _>>();
 
-        // Loop box spots and check if there is a box
-        for (_box_spot, position) in (&box_spots, &positions).join() {
-            if boxes_by_position.contains_key(&(position.x, position.y)) {
-                // continue
+        // Loop box spots and check if there is a box of the same color
+        for (box_spot, position) in (&box_spots, &positions).join() {
+            if let Some(the_box) = boxes_by_position.get(&(position.x, position.y)) {
+                if the_box.color == box_spot.color {
+                    // continue
+                } else {
+                    // return, haven't won yet
+                    return;
+                }
             } else {
                 gameplay_state.state = GameplayState::Playing;
                 return;
