@@ -1,12 +1,15 @@
 // rendering_system.rs
 
-use crate::{components::*, resources::Gameplay};
+use crate::resources::*;
+use crate::components::*;
 use crate::constants::TILE_WIDTH;
 
-use ggez::graphics::Color;
-use ggez::{Context, graphics::{self, DrawParam, Image}};
+use ggez::{Context, graphics::{self, DrawParam, Image, Color}};
 use specs::{Join, ReadStorage, System, Read};
 use glam::Vec2;
+
+use std::time::Duration;
+
 pub struct RenderingSystem<'a> {
     pub context: &'a mut Context,
 }
@@ -27,14 +30,32 @@ impl RenderingSystem<'_> {
         )
         .expect("expected drawing queued text");
     }
+
+    pub fn get_image(&mut self, renderable: &Renderable, delta: Duration) -> Image {
+        let path_index = match renderable.kind() {
+            RenderableKind::Static => {
+                // Return the only image
+                0
+            }
+            RenderableKind::Animated => {
+                // Select the right image based on delta time.
+                // We get a number between 0 and 4, 4 being the next iteration (0)
+                ((delta.as_millis() % 1000) / 250) as usize
+            }
+        };
+
+        let image_path = renderable.path(path_index);
+
+        Image::new(self.context, image_path).expect("expected image")
+    }
 }
 
 impl<'a> System<'a> for RenderingSystem<'a> {
     // Data
-    type SystemData = (Read<'a, Gameplay>, ReadStorage<'a, Position>, ReadStorage<'a, Renderable>);
+    type SystemData = (Read<'a, Gameplay>, Read<'a, Time>, ReadStorage<'a, Position>, ReadStorage<'a, Renderable>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (gameplay, positions, renderables) = data;
+        let (gameplay, time, positions, renderables) = data;
 
         // Clear screen, thus setting background
         graphics::clear(self.context, graphics::Color::new(0.95, 0.95, 0.95, 1.0));
@@ -45,7 +66,7 @@ impl<'a> System<'a> for RenderingSystem<'a> {
 
         // Draw all renderables
         for (position, renderable) in rendering_data.iter() {
-            let image = Image::new(self.context, renderable.path.clone()).expect("expected image");
+            let image = self.get_image(renderable, time.delta);
             let x = position.x as f32 * TILE_WIDTH;
             let y = position.y as f32 * TILE_WIDTH;
 

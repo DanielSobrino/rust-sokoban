@@ -2,7 +2,14 @@
 
 use ggez::event::KeyCode;
 use specs::World;
-use std::fmt::{self, Display};
+use std::{fmt::{self, Display}, time::Duration};
+
+// Register resources
+pub fn register_resources(world: &mut World) {
+    world.insert(InputQueue::default());
+    world.insert(Gameplay::default());
+    world.insert(Time::default());
+}
 
 // Resources
 #[derive(Default)]
@@ -36,8 +43,7 @@ impl Display for GameplayState {
     }
 }
 
-// Register resources
-pub fn register_resources(world: &mut World) {
-    world.insert(InputQueue::default());
-    world.insert(Gameplay::default());
+#[derive(Default)]
+pub struct Time {
+    pub delta: Duration,
 }
