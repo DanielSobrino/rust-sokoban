@@ -1,21 +1,40 @@
 // rendering_system.rs
 
-use crate::components::*;
+use crate::{components::*, resources::Gameplay};
 use crate::constants::TILE_WIDTH;
 
+use ggez::graphics::Color;
 use ggez::{Context, graphics::{self, DrawParam, Image}};
-use specs::{Join, ReadStorage, System};
+use specs::{Join, ReadStorage, System, Read};
 use glam::Vec2;
 pub struct RenderingSystem<'a> {
     pub context: &'a mut Context,
 }
 
+impl RenderingSystem<'_> {
+    pub fn draw_text(&mut self, text_string: &str, x: f32, y: f32) {
+        let text = graphics::Text::new(text_string);
+        let destination = Vec2::new(x, y);
+        let color = Some(Color::new(0.0, 0.0, 0.0, 1.0));
+        let dimensions = Vec2::new(0.0, 20.0);
+
+        graphics::queue_text(self.context, &text, dimensions, color);
+        graphics::draw_queued_text(
+            self.context,
+            graphics::DrawParam::new().dest(destination),
+            None,
+            graphics::FilterMode::Linear,
+        )
+        .expect("expected drawing queued text");
+    }
+}
+
 impl<'a> System<'a> for RenderingSystem<'a> {
     // Data
-    type SystemData = (ReadStorage<'a, Position>, ReadStorage<'a, Renderable>);
+    type SystemData = (Read<'a, Gameplay>, ReadStorage<'a, Position>, ReadStorage<'a, Renderable>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (positions, renderables) = data;
+        let (gameplay, positions, renderables) = data;
 
         // Clear screen, thus setting background
         graphics::clear(self.context, graphics::Color::new(0.95, 0.95, 0.95, 1.0));
@@ -33,6 +52,10 @@ impl<'a> System<'a> for RenderingSystem<'a> {
             let draw_params = DrawParam::new().dest(Vec2::new(x, y));
             graphics::draw(self.context, &image, draw_params).expect("expected render");
         }
+
+        // Render any text
+        self.draw_text(&gameplay.state.to_string(), 525.0, 80.0);
+        self.draw_text(&gameplay.moves_count.to_string(), 525.0, 100.0);
 
         // Present context to draw on screen
         graphics::present(self.context).expect("expected to present");

@@ -2,7 +2,7 @@
 
 use crate::components::*;
 use crate::constants::*;
-use crate::resources::InputQueue;
+use crate::resources::{InputQueue, Gameplay};
 use ggez::event::KeyCode;
 use specs::{world::Index, Entities, Join, ReadStorage, System, Write, WriteStorage};
 
@@ -12,10 +12,16 @@ pub struct InputSystem {}
 
 impl<'a> System<'a> for InputSystem {
     // Data
-    type SystemData = (Write<'a, InputQueue>, Entities<'a>, WriteStorage<'a, Position>, ReadStorage<'a, Player>, ReadStorage<'a, Movable>, ReadStorage<'a, Immovable>);
+    type SystemData = (
+        Write<'a, InputQueue>,
+        Write<'a, Gameplay>,
+        Entities<'a>, WriteStorage<'a, Position>,
+        ReadStorage<'a, Player>,
+        ReadStorage<'a, Movable>,
+        ReadStorage<'a, Immovable>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut input_queue, entities, mut positions, players, movables, immovables) = data;
+        let (mut input_queue, mut gameplay, entities, mut positions, players, movables, immovables) = data;
 
         let mut to_move = Vec::new();
 
@@ -70,6 +76,13 @@ impl<'a> System<'a> for InputSystem {
                     }
                 }
             }  
+        }
+
+        // Increase the number of moves
+        if to_move.len() > 0 {
+            gameplay.moves_count += 1;
+            // we could save the current state of the map
+            // here to be able to undo steps
         }
 
         // Actually move what needs to be moved
