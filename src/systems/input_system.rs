@@ -2,7 +2,8 @@
 
 use crate::components::*;
 use crate::constants::*;
-use crate::resources::{InputQueue, Gameplay};
+use crate::events::{EntityMoved, Event};
+use crate::resources::{EventQueue, Gameplay, InputQueue};
 use ggez::event::KeyCode;
 use specs::{world::Index, Entities, Join, ReadStorage, System, Write, WriteStorage};
 
@@ -13,6 +14,7 @@ pub struct InputSystem {}
 impl<'a> System<'a> for InputSystem {
     // Data
     type SystemData = (
+        Write<'a, EventQueue>,
         Write<'a, InputQueue>,
         Write<'a, Gameplay>,
         Entities<'a>, WriteStorage<'a, Position>,
@@ -21,7 +23,7 @@ impl<'a> System<'a> for InputSystem {
         ReadStorage<'a, Immovable>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut input_queue, mut gameplay, entities, mut positions, players, movables, immovables) = data;
+        let (mut events, mut input_queue, mut gameplay, entities, mut positions, players, movables, immovables) = data;
 
         let mut to_move = Vec::new();
 
@@ -33,9 +35,9 @@ impl<'a> System<'a> for InputSystem {
                     .map(|t| ((t.2.x, t.2.y), t.0.id()))
                     .collect::<HashMap<_, _>>();
                 let immov: HashMap<(u8, u8), Index> = (&entities, &immovables, &positions)
-                .join()
-                .map(|t| ((t.2.x, t.2.y), t.0.id()))
-                .collect::<HashMap<_, _>>();
+                    .join()
+                    .map(|t| ((t.2.x, t.2.y), t.0.id()))
+                    .collect::<HashMap<_, _>>();
 
                 // Iterate from current pos to end of map to check moves
                 let (start, end, is_x) = match key {
@@ -69,7 +71,10 @@ impl<'a> System<'a> for InputSystem {
                             // - If it exists, stop and don't move anything
                             // - If it doesn't, stop cause there's a gap
                             match immov.get(&pos) {
-                                Some(_id) => to_move.clear(),
+                                Some(_id) => {
+                                    to_move.clear();
+                                    events.events.push(Event::PlayerHitObstacle {})
+                                },
                                 None => break,
                             }
                         }
@@ -97,6 +102,8 @@ impl<'a> System<'a> for InputSystem {
                     _ => (),
                 }
             }
+            // Fire an event for the entity that just moved
+            events.events.push(Event::EntityMoved(EntityMoved { id }));
         }
     }
 }

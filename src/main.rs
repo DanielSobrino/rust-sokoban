@@ -1,21 +1,26 @@
 // Rust sokoban
 // main.rs
 
-use ggez::{conf, event::{self, KeyCode, KeyMods}, Context, GameResult, timer};
+use ggez::{conf, event::{self, KeyCode, KeyMods}, timer, Context, GameResult};
 use specs::{RunNow, World, WorldExt};
+
 use std::path;
 
+mod audio;
 mod components;
 mod constants;
 mod entities;
+mod events;
 mod map;
 mod resources;
 mod systems;
 
+use crate::audio::*;
 use crate::components::*;
 use crate::map::*;
 use crate::resources::*;
 use crate::systems::*;
+
 
 struct Game {
     world: World,
@@ -30,6 +35,10 @@ impl event::EventHandler<ggez::GameError> for Game {
         {   // Run gameplay state system
             let mut gss = GameplayStateSystem {};
             gss.run_now(&self.world);
+        }
+        {   // Run event system
+            let mut es = EventSystem { context };
+            es.run_now(&self.world);
         }
         {   // Get and update time resource
             let mut time = self.world.write_resource::<Time>();
@@ -56,8 +65,6 @@ impl event::EventHandler<ggez::GameError> for Game {
         _keymod: KeyMods,
         _repeat: bool,
     ) {
-        println!("Key pressed: {:?}", keycode);
-
         let mut input_queue = self.world.write_resource::<InputQueue>();
         input_queue.keys_pressed.push(keycode);
     }
@@ -91,7 +98,8 @@ pub fn main() -> GameResult {
         .window_mode(conf::WindowMode::default().dimensions(800.0, 600.0))
         .add_resource_path(path::PathBuf::from("./resources"));
 
-    let (context, event_loop) = context_builder.build()?;
+    let (mut context, event_loop) = context_builder.build()?;
+    initialize_sounds(&mut world, &mut context);
 
     // Create the game state
     let game = Game { world };
